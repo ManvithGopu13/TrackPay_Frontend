@@ -17,10 +17,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token'); // Remove token
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }], // Set Login as the initial screen
-    });
+    await AsyncStorage.removeItem('user_id'); // Remove token
+    // navigation.reset({
+    //   index: 0,
+    //   routes: [{ name: 'Login' }], // Set Login as the initial screen
+    // });
+    navigation.navigate('Login');
   };
 
   return (
