@@ -253,7 +253,7 @@ const LendingScreen: React.FC = () => {
             ))}
           </Picker>
 
-          {/* <Text>Status:</Text>
+          <Text>Status:</Text>
           <Picker
             selectedValue={newLend.status}
             onValueChange={(value) => setNewLend({ ...newLend, status: value })}
@@ -261,7 +261,7 @@ const LendingScreen: React.FC = () => {
             {statusOptions.map((status) => (
               <Picker.Item key={status} label={status} value={status} />
             ))}
-          </Picker> */}
+          </Picker>
 
           <TextInput
             style={styles.input}
