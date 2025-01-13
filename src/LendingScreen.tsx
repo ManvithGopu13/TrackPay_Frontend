@@ -243,7 +243,7 @@ const LendingScreen: React.FC = () => {
             value={newLend.period.toString()}
             onChangeText={(text) => setNewLend({ ...newLend, period: parseInt(text) })}
           />
-          <Text>Interest Type:</Text>
+          {/* <Text>Interest Type:</Text>
           <Picker
             selectedValue={newLend.interestType}
             onValueChange={(value) => setNewLend({ ...newLend, interestType: value })}
@@ -251,7 +251,7 @@ const LendingScreen: React.FC = () => {
             {interestTypes.map((type) => (
               <Picker.Item key={type} label={type} value={type} />
             ))}
-          </Picker>
+          </Picker> */}
 
           <Text>Status:</Text>
           <Picker
