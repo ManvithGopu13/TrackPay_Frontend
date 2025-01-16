@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for the backend
-const BASE_URL = 'https://trackpay-backend-try-2.onrender.com/api'; // Replace with your backend URL
+const BASE_URL = 'http://172.20.10.3:10000/api'; // Replace with your backend URL
 
 // Function to register a new user
 export const registerUser = async (user: { name: string; email: string; password: string }) => {
@@ -22,7 +22,7 @@ export const loginUser = async (user: { email: string; password: string }) => {
     console.log(`${response}`);
     return response.data;
   } catch (error: any) {
-    throw error.response?.data || { message: 'Error logging in' };
+    throw error.response?.data || { message: 'Error logging in from the frontend-side' };
   }
 };
   
