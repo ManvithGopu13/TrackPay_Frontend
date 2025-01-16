@@ -229,13 +229,13 @@ const LendingScreen: React.FC = () => {
             value={newLend.amount.toString()}
             onChangeText={(text) => setNewLend({ ...newLend, amount: parseFloat(text) })}
           />
-          {/* <TextInput
+          <TextInput
             style={styles.input}
             placeholder="Enter interest rate"
             keyboardType="numeric"
             value={newLend.interestRate.toString()}
             onChangeText={(text) => setNewLend({ ...newLend, interestRate: parseFloat(text) })}
-          /> */}
+          />
           <TextInput
             style={styles.input}
             placeholder="Period (in days)"
