@@ -13,7 +13,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const state = useNavigationState(state => state);
 
-  console.log('Current Navigation State:', state);
+  // console.log('Current Navigation State:', state);
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token'); // Remove token

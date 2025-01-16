@@ -325,6 +325,8 @@ const categorizeSMS = (smsBody: string): string => {
   return 'others';
 };
 
+
+
 const SMSParserApp: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [newBookName, setNewBookName] = useState("");
@@ -339,6 +341,14 @@ const SMSParserApp: React.FC = () => {
 
   const [smsMessages, setSmsMessages] = useState<SMSMessage[]>([]);
   const [categorizedMessages, setCategorizedMessages] = useState<CategorizedMessages>({});
+  const [collapsedState, setCollapsedState] = useState<Record<string, boolean>>({});
+  // const [collapsedState, setCollapsedState] = useState(() =>
+  //   generateInitialCollapsedState(books)
+  // );
+  const [collapsed, setCollapsed] = useState(true);
+  
+
+ // State to manage collapsed/expanded names
 
     useEffect(() => {
     const fetchSMS = async () => {
@@ -359,7 +369,7 @@ const SMSParserApp: React.FC = () => {
           const filter = {
             box: 'inbox', // Fetch messages from the inbox
             indexFrom: 0, // Start index
-            maxCount: 50, // Maximum number of SMS to fetch
+            maxCount: 100, // Maximum number of SMS to fetch
           };
 
           SmsAndroid.list(
@@ -386,8 +396,8 @@ const SMSParserApp: React.FC = () => {
               // Automatically add payment messages to the first book
               if (books.length === 0) {
                 // No books exist, create the first book
-                const newBook = {
-                  name: "Default Book", // Default book name
+                const newBook: Book = {
+                  name: "All Payments Book", // Default book name
                   categories: {
                     Payments: [], // Initialize the Payments category
                   },
@@ -408,26 +418,26 @@ const SMSParserApp: React.FC = () => {
                 // Set the new book in the state
                 setBooks([...books, newBook]);
               } else {
-                // If books exist, update the first book
-                const updatedBooks = [...books];
-                const firstBook = updatedBooks[0];
+                // // If books exist, update the first book
+                // const updatedBooks = [...books];
+                // const firstBook = updatedBooks[0];
               
-                if (!firstBook.categories["Payments"]) {
-                  firstBook.categories["Payments"] = [];
-                }
+                // if (!firstBook.categories["Payments"]) {
+                //   firstBook.categories["Payments"] = [];
+                // }
               
-                messages.forEach((message) => {
-                  const paymentDetails = parsePaymentMessage(message.body);
-                  if (paymentDetails.amount) {
-                    firstBook.categories["Payments"].push({
-                      name: paymentDetails.to || paymentDetails.from || "Unknown",
-                      amount: paymentDetails.amount,
-                      date: new Date(message.date).toLocaleString(),
-                    });
-                  }
-                });
+                // messages.forEach((message) => {
+                //   const paymentDetails = parsePaymentMessage(message.body);
+                //   if (paymentDetails.amount) {
+                //     firstBook.categories["Payments"].push({
+                //       name: paymentDetails.to || paymentDetails.from || "Unknown",
+                //       amount: paymentDetails.amount,
+                //       date: new Date(message.date).toLocaleString(),
+                //     });
+                //   }
+                // });
               
-                setBooks(updatedBooks);
+                // setBooks(updatedBooks);
               }
               
             }
@@ -442,6 +452,14 @@ const SMSParserApp: React.FC = () => {
 
     fetchSMS();
   }, []);
+
+  useEffect(() => {
+    // Dynamically update collapsedState based on the current books
+    const updatedCollapsedState = generateInitialCollapsedState(books);
+    setCollapsedState(updatedCollapsedState);
+  
+    // console.log("Updated collapsedState:", updatedCollapsedState);
+  }, [books]);
 
 
     // Helper function to parse payment-related SMS
@@ -535,103 +553,138 @@ const SMSParserApp: React.FC = () => {
     setIsTransactionModalVisible(false);
   };
 
+  // Helper function to group transactions by name
+  const groupByName = (transactions: Transaction[]) => {
+    return transactions.reduce<Record<string, Transaction[]>>((grouped, transaction) => {
+      if (!grouped[transaction.name]) {
+      grouped[transaction.name] = [];
+      }
+      grouped[transaction.name].push(transaction);
+      return grouped;
+    }, {});
+  };
+
+  const generateInitialCollapsedState = (books: Book[]): Record<string, boolean> => {
+    const initialState: Record<string, boolean> = {};
+
+    // console.log('Books in generateInitialCollapsedState:', books);
+  
+    books.forEach((book, bookIndex) => {
+      Object.entries(book.categories).forEach(([category, transactions]) => {
+        const groupedByName = groupByName(transactions);
+        Object.keys(groupedByName).forEach((name) => {
+          const key = `${bookIndex}-${category}-${name}`;
+          initialState[key] = true; // Set all sections to collapsed initially
+        });
+      });
+    });
+    
+    // console.log('Generated initialState:', initialState);
+    return initialState;
+  };
+  
+  // const [collapsedState, setCollapsedState] = useState(() =>
+  //   generateInitialCollapsedState(books)
+  // );
+  
+
+
+  // Toggle collapsed state for a specific name
+  const toggleCollapsed = (bookIndex: number, category: string, name: string) => {
+    const key = `${bookIndex}-${category}-${name}`;
+    setCollapsedState((prevState) => ({
+      ...prevState,
+      [key]: !prevState[key], // Toggle the current state
+    }));
+    setCollapsed(collapsed? false : true);
+  };
+  
+ 
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Payment Messages</Text>
+      {/* <Text style={styles.title}>Payment Messages</Text> */}
 
-    <FlatList
-  data={['payments']} // Only show the 'payments' category
+<Text style={styles.title}>Expense Books</Text>
+
+
+<FlatList
+  horizontal
+  data={books}
   keyExtractor={(item, index) => index.toString()}
-  showsVerticalScrollIndicator={false}
-  renderItem={({ item: category }) => (
-    <View style={styles.category}>
-      {/* <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text> */}
-      <FlatList      
-      horizontal
-        data={categorizedMessages[category]}
-        keyExtractor={(message, index) => index.toString()}
-        nestedScrollEnabled={true} // Enable nested scrolling for inner FlatList
-        showsHorizontalScrollIndicator = {false}
-        renderItem={({ item: message }) => {
-          const paymentDetails = parsePaymentMessage(message.body);
+  renderItem={({ item: book, index: bookIndex }) => (
+    <View style={styles.book_container}>
+      {/* Book Title */}
+      <Text style={styles.bookTitle}>{book.name}</Text>
+
+      {/* Categories and Transactions */}
+      <ScrollView style={styles.book}>
+        {Object.entries(book.categories).map(([category, transactions]) => {
+          // Group transactions by name
+          const groupedByName = groupByName(transactions);
 
           return (
-            <View style={styles.message}>
-              <Text style={styles.sender}>Sender: {message.address}</Text>
-              
-              {paymentDetails && (
-                <>
-                  {paymentDetails.type === 'debit' && (
-                    <>
-                      <Text style={styles.details}>To: {paymentDetails.to}</Text>
-                      <Text style={styles.details}>Amount: {paymentDetails.amount}</Text>
-                      <Text style={styles.details}>Ref. No: {paymentDetails.refNo}</Text>
-                    </>
-                  )}
-                  {paymentDetails.type === 'credit' && (
-                    <>
-                      <Text style={styles.details}>From: {paymentDetails.from}</Text>
-                      <Text style={styles.details}>Amount: {paymentDetails.amount}</Text>
-                      <Text style={styles.details}>Ref. No: {paymentDetails.refNo}</Text>
-                    </>
-                  )}
-                </>
-              )}
+            <View key={category} style={styles.category}>
+              {/* Category Title */}
+              <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
 
-              <Text style={styles.body}>Message: {message.body}</Text>
-              <Text style={styles.date}>
-                Date: {new Date(message.date).toLocaleString()}
-              </Text>
+              {/* Transactions grouped by name */}
+              {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
+                // Generate a unique key for collapsing
+                const key = `${bookIndex}-${category}-${name}`;
+                const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
+                // console.log('Initial collapsedState:', collapsedState);
+                return (
+                  <View key={name} style={styles.nameSection}>
+                    {/* Name Title with toggle button */}
+                    <TouchableOpacity
+                      style={styles.nameToggle}
+                      onPress={() => toggleCollapsed(bookIndex, category, name)} // Toggling collapse state
+                    >
+                      <Text style={styles.nameTitle}>{name}</Text>
+                      <Text style={styles.toggleIcon}>
+                        {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Collapsible Transactions */}
+                    {!isCollapsed && (
+                      <View style={styles.transactionsList}>
+                        {groupedTransactions.map((transaction, index) => (
+                          <View key={index} style={styles.transaction}>
+                            <Text>Name: {transaction.name}</Text>
+                            <Text>Amount: {transaction.amount}</Text>
+                            <Text>Date: {transaction.date}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           );
+        })}
+      </ScrollView>
+
+      {/* Add Transaction Button */}
+      <TouchableOpacity
+        style={styles.addTransactionButton}
+        onPress={() => {
+          setNewTransaction({
+            ...newTransaction,
+            bookIndex,
+          });
+          setIsTransactionModalVisible(true);
         }}
-      />
+      >
+        <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+      </TouchableOpacity>
     </View>
   )}
 />
 
-<Text style={styles.title}>Expense Books</Text>
 
-      <FlatList
-      horizontal
-        data={books}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item: book, index: bookIndex }) => (
-    
-          <ScrollView style={styles.book}>
-            <Text style={styles.bookTitle}>{book.name}</Text>
-            {Object.entries(book.categories).map(([category, transactions]) => (
-              <View key={category} style={styles.category}>
-                <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
-                {transactions.map((transaction, index) => (
-                  <View key={index} style={styles.transaction}>
-                    <Text>Name: {transaction.name}</Text>
-                    <Text>Amount: {transaction.amount}</Text>
-                    <Text>Date: {transaction.date}</Text>
-                  </View>
-                ))}
-              </View>
-            ))}
-
-          <TouchableOpacity
-          style={styles.addTransactionButton}
-          onPress={() => {
-            setNewTransaction({
-              ...newTransaction,
-              bookIndex,
-            }
-          );
-          setIsTransactionModalVisible(true);
-            }
-          }
-        >
-          <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
-        </TouchableOpacity>
-
-          </ScrollView>
-          
-        )}
-      />
 
       <TouchableOpacity
         style={styles.addButton}
@@ -707,38 +760,50 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: "bold",
     marginBottom: 10,
+    textAlign: "center",
   },
   book_container : {
-    height: 300,
-    width: 300
+    // height: 600,
+    width: 350,
+    marginHorizontal: 8,
+    backgroundColor: "#7af",
+    borderRadius: 25,
+    marginBottom: 10
   },
   book: {
     padding: 10,
     height: 300,
-    width: 300,
+    width: 320,
     marginHorizontal: 12,
     paddingBottom: 20,
+    // paddingTop: 10,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 5,
+    borderRadius: 25,
     marginBottom: 10,
     backgroundColor: "#f9f9f9",
   },
   bookTitle: {
-    fontSize: 16,
+    fontSize: 18,
+    // flexDirection: "column",
     fontWeight: "bold",
+  textAlign: "center", // Align text horizontally at the center
+  alignSelf: "center", // Center the element itself
+  marginTop: 10, 
   },
   category: {
     marginTop: 10,
     
   },
   categoryTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
+    textAlign: "center",
   },
   transaction: {
     padding: 5,
@@ -758,11 +823,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   addTransactionButton: {
-    backgroundColor: "#32CD32",
+    backgroundColor: "#02cd09",
     padding: 5,
     borderRadius: 5,
-    marginTop: 10,
-    marginBottom: 30
+    // marginTop: 10,
+    marginBottom: 30,
+    marginHorizontal: 20,
+    // marginStart: 30
   },
   addTransactionButtonText: {
     color: "#fff",
@@ -821,8 +888,100 @@ const styles = StyleSheet.create({
         marginBottom: 3,
         fontSize: 14,
       },
+      nameSection: { marginBottom: 10 },
+      nameToggle: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 5,
+        backgroundColor: "#e0e0e0",
+        paddingHorizontal: 10,
+      },
+      nameTitle: { fontSize: 14, fontWeight: "bold" },
+      toggleIcon: { fontSize: 12, fontWeight: "bold" },
+      transactionsList: { marginLeft: 10 },
   
 });
 
 export default SMSParserApp;
+
+
+
+
+
+{/* <FlatList
+horizontal
+data={books}
+keyExtractor={(item, index) => index.toString()}
+renderItem={({ item: book, index: bookIndex }) => (
+  <View style={styles.book_container}>
+    {/* Book Title */}
+//     <Text style={styles.bookTitle}>{book.name}</Text>
+
+//     {/* Categories and Transactions */}
+//     <ScrollView style={styles.book}>
+//       {Object.entries(book.categories).map(([category, transactions]) => {
+//         // Group transactions by name
+//         const groupedByName = groupByName(transactions);
+
+//         return (
+//           <View key={category} style={styles.category}>
+//             {/* Category Title */}
+//             <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
+
+//             {/* Transactions grouped by name */}
+//             {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
+//               // Generate a unique key for collapsing
+//               const key = `${bookIndex}-${category}-${name}`;
+//               const isCollapsed = collapsedState[key];
+//               // const isCollapsed = collapsed;
+//               return (
+//                 <View key={name} style={styles.nameSection}>
+//                   {/* Name Title with toggle button */}
+//                   <TouchableOpacity
+//                     style={styles.nameToggle}
+//                     onPress={() => toggleCollapsed(bookIndex, category, name)}
+//                   >
+//                     <Text style={styles.nameTitle}>{name}</Text>
+//                     <Text style={styles.toggleIcon}>
+//                       {isCollapsed ? "▼" : "▲"}
+//                     </Text>
+//                   </TouchableOpacity>
+
+//                   {/* Collapsible Transactions */}
+//                   {!isCollapsed && (
+//                     <View style={styles.transactionsList}>
+//                       {groupedTransactions.map((transaction, index) => (
+//                         <View key={index} style={styles.transaction}>
+//                           <Text>Name: {transaction.name}</Text>
+//                           <Text>Amount: {transaction.amount}</Text>
+//                           <Text>Date: {transaction.date}</Text>
+//                         </View>
+//                       ))}
+//                     </View>
+//                   )}
+//                 </View>
+//               );
+//             })}
+//           </View>
+//         );
+//       })}
+//     </ScrollView>
+
+//     {/* Add Transaction Button */}
+//     <TouchableOpacity
+//       style={styles.addTransactionButton}
+//       onPress={() => {
+//         setNewTransaction({
+//           ...newTransaction,
+//           bookIndex,
+//         });
+//         setIsTransactionModalVisible(true);
+//       }}
+//     >
+//       <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+//     </TouchableOpacity>
+//   </View>
+// )}
+// /> */}
 
