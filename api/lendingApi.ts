@@ -71,3 +71,78 @@ export const deleteLend = async (id: string) => {
     throw error;
   }
 };
+
+// Function to get all transactions for a user
+export const getTransactions = async (user_id: string) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/transaction/getTransactions`, {
+      params: { user_id }, // Pass user_id as a query parameter
+    });
+    return response.data; // Return the list of transactions
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
+
+// Function to add a new transaction
+export const addTransaction = async (transactionData: any) => {
+  try {
+    const response = await axios.post(`${BASE_URL}/transaction/addTransaction`, transactionData);
+    return response.data; // Return the newly created transaction
+  } catch (error) {
+    console.error("Error adding transaction:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
+
+// Function to update a transaction
+export const updateTransaction = async (id: string, user_id: string, updatedData: any) => {
+  try {
+    const response = await axios.put(`${BASE_URL}/transaction/updateTransaction/${id}`, {
+      user_id, // Include user_id in the body
+      ...updatedData,
+    });
+    return response.data; // Return the updated transaction
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
+
+// Function to delete a transaction
+export const deleteTransaction = async (id: string, user_id: string) => {
+  try {
+    const response = await axios.delete(`${BASE_URL}/transaction/deleteTransaction/${id}`, {
+      data: { user_id }, // Include user_id in the request body
+    });
+    return response.data; // Return success message
+  } catch (error) {
+    console.error("Error deleting transaction:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
+
+// Function to fetch all books
+export const getBooks = async (user_id: string) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/transaction/getBooks`, {
+      params: { user_id }, // Pass user_id as a query parameter
+    });
+    return response.data; // Return the list of books
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
+
+// Function to add a new book
+export const addBook = async (bookData: any) => {
+  try {
+    const response = await axios.post(`${BASE_URL}/transaction/addBook`, bookData);
+    return response.data; // Return the newly created book
+  } catch (error) {
+    console.error("Error adding book:", error);
+    throw error; // Rethrow to handle it in the frontend
+  }
+};
