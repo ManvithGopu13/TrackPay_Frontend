@@ -78,6 +78,7 @@ export const getTransactions = async (user_id: string) => {
     const response = await axios.get(`${BASE_URL}/transaction/getTransactions`, {
       params: { user_id }, // Pass user_id as a query parameter
     });
+    console.log(` IN the getTransactrions call : ${response.data}`)
     return response.data; // Return the list of transactions
   } catch (error) {
     console.error("Error fetching transactions:", error);
@@ -126,6 +127,7 @@ export const deleteTransaction = async (id: string, user_id: string) => {
 // Function to fetch all books
 export const getBooks = async (user_id: string) => {
   try {
+    console.log(`Entered fetching books`)
     const response = await axios.get(`${BASE_URL}/transaction/getBooks`, {
       params: { user_id }, // Pass user_id as a query parameter
     });
@@ -139,6 +141,7 @@ export const getBooks = async (user_id: string) => {
 // Function to add a new book
 export const addBook = async (bookData: any) => {
   try {
+    console.log(`${bookData.name}, ${bookData.user_id}`)
     const response = await axios.post(`${BASE_URL}/transaction/addBook`, bookData);
     return response.data; // Return the newly created book
   } catch (error) {
