@@ -27,11 +27,11 @@ type Transaction = {
   description: string;
   user_id: string;
   category_id: string;
-  books: string[];
+  book: string;
   associated_person: string;
-  meta_data?: {
-    originalMessage: string;
-  };
+  // meta_data?: {
+  //   originalMessage: string;
+  // };
 };
 
 type GroupedTransactions = {
@@ -54,7 +54,7 @@ type GroupedBooks = {
 };
 
 interface Book {
-  id: string;  // or _id: string if it's from MongoDB
+  _id: string;  // or _id: string if it's from MongoDB
   name: string;
   categories: {
     [category: string]: Transaction[];
@@ -127,7 +127,7 @@ const generateInitialCollapsedState = (books: Book[]): Record<string, boolean> =
     });
   });
   
-  console.log('Generated initialState:', initialState);
+  // console.log('Generated initialState:', initialState);
   return initialState;
 };
 
@@ -158,7 +158,7 @@ const SMSParserApp: React.FC = () => {
   const [fetchedTransactions, setTransactions] = useState<Transaction[]>([]);
   const groupedTransactions = fetchedTransactions ? groupByName(fetchedTransactions) : {};
   
-  console.log(`Final Fetched transactions are: ${fetchedTransactions}`)
+  // console.log(`Final Fetched transactions are: ${fetchedTransactions}`)
  // State to manage collapsed/expanded names
 
 
@@ -201,11 +201,11 @@ const SMSParserApp: React.FC = () => {
 
             // Fetch existing books from the backend
             const existingBooks = await getBooks(user_id); // Implement this API call
-            console.log('Response:', existingBooks);
+            // console.log('Response:', existingBooks);
 
             // Find the "All Payments Book" from the existingBooks array
             const allPaymentsBook = existingBooks.find((book: Book) => book.name === 'All Payments Book');
-            console.log(`Found book: ${allPaymentsBook ? JSON.stringify(allPaymentsBook) : 'Not found'}`);
+            // console.log(`Found book: ${allPaymentsBook ? JSON.stringify(allPaymentsBook) : 'Not found'}`);
 
             let book_id;
             if (!allPaymentsBook) {
@@ -215,31 +215,33 @@ const SMSParserApp: React.FC = () => {
                 user_id,
               });
               book_id = newBook._id;
+              console.log(`new added book id is : ${book_id}`)
               console.log('Book added to backend:', newBook);
             } else {
               // Use the existing book's ID
               book_id = allPaymentsBook._id;
-              console.log('Using existing book:', allPaymentsBook);
+              // console.log('Using existing book:', allPaymentsBook);
             }
 
             // Fetch existing transactions for the user
              const existingTransactions = await getTransactions(user_id); // Fetch all transactions for the user
-            console.log('Existing transactions:', existingTransactions);
+            // console.log('Existing transactions:', existingTransactions);
 
             // Process SMS messages and add transactions
             for (const message of messages) {
+              
               const paymentDetails = parsePaymentMessage(message.body);
               if (paymentDetails.amount) {
                 try {
                   // Normalize the message body for comparison (e.g., remove extra spaces)
                   const normalizedMessage = message.body.trim().toLowerCase();
-                  console.log(`paymentDetails refno : ${paymentDetails.refNo}`)
+                  // console.log(`paymentDetails refno : ${paymentDetails.refNo}`)
                   // Check if the transaction already exists (by refNo or message body)
                   const isDuplicate = existingTransactions.some(
                     (txn: Transaction) =>
                       txn.refNo === paymentDetails.refNo
                   );
-                  console.log(`Is it duplicate : ${isDuplicate}`)
+                  // console.log(`Is it duplicate : ${isDuplicate}`)
                   if (!isDuplicate) {
                     // Add transaction to the backend
                     const transactionData = {
@@ -250,17 +252,17 @@ const SMSParserApp: React.FC = () => {
                       description: 'Payment transaction',
                       user_id,
                       category_id: 'Payments', // Replace with the actual category ID if available
-                      books: [book_id],
+                      book: book_id,
                       associated_person: paymentDetails.to || paymentDetails.from || 'Unknown',
                     };
 
                     const transactionResponse = await addTransaction(transactionData);
                     console.log('Transaction added to backend:', transactionResponse);
                   } else {
-                    console.log('Duplicate transaction detected, skipping:', message.body);
+                    // console.log('Duplicate transaction detected, skipping:', message.body);
                   }
                 } catch (error) {
-                  console.error('Error adding transaction:', error);
+                  // console.error('Error adding transaction:', error);
                   Alert.alert('Error', 'Failed to save the transaction to the backend.');
                 }
               }
@@ -290,10 +292,11 @@ const SMSParserApp: React.FC = () => {
         }
         // const user_id = id; // Replace with actual user ID
         const fetchedBooks = await getBooks(id);
-        console.log("Fetched Books:", fetchedBooks);
+        // console.log("Fetched Books:", fetchedBooks);
 
         // Transform the fetched data to match the Book interface
     const transformedBooks: Book[] = fetchedBooks.map((book: any) => ({
+      _id: book._id,
       name: book.name,
       categories: {Payments: [],}, // Assuming an empty object if categories don't exist
     }));
@@ -306,39 +309,6 @@ const SMSParserApp: React.FC = () => {
     fetchBooks();
     // fetchSMS();
   }, []);
-
-  // Function to group transactions by book and category
-// const groupTransactionsByBook = (transactions: Transaction[]): Book[] => {
-//   const booksMap: { [key: string]: Book } = {};
-
-//   // Check if transactions is valid and an array
-//   if (!Array.isArray(transactions)) {
-//     console.error('Transactions is not an array:', transactions);
-//     return [];  // Return an empty array if transactions is not valid
-//   }
-
-//   transactions.forEach((transaction) => {
-//     // Ensure that each book exists in the map
-//     if (!booksMap[transaction.associated_person]) {
-//       booksMap[transaction.associated_person] = {
-//         name: transaction.associated_person,
-//         categories: {},
-//       };
-//     }
-
-//     // Group by category
-//     const book = booksMap[transaction.associated_person];
-//     if (!book.categories[transaction.category_id]) {
-//       book.categories[transaction.category_id] = [];
-//     }
-
-//     book.categories[transaction.category_id].push(transaction);
-//   });
-
-//   // Convert the map to an array of books
-//   return Object.values(booksMap);
-// };
-
 
   // Fetch Transactions and Group by Book and Category
   useEffect(() => {
@@ -353,25 +323,10 @@ const SMSParserApp: React.FC = () => {
 
         // Fetch transactions from the backend
         const existingTransactions = await getTransactions(user_id); // Fetch all transactions for the user
-        console.log('Feteched transacions are :', existingTransactions);
+        // console.log('Feteched transacions are :', existingTransactions);
         setTransactions(existingTransactions)
         setLoading(false);
-        console.log("Transactions fetched")
-
-        // // Group transactions by books and category_id
-        // const grouped = fetchedTransactions.reduce<GroupedTransactions>((acc, transaction) => {
-        //   transaction.books.forEach(bookId => {
-        //     if (!acc[bookId]) {
-        //       acc[bookId] = { bookName: "", categories: {} };
-        //     }
-        //     if (!acc[bookId].categories[transaction.category_id]) {
-        //       acc[bookId].categories[transaction.category_id] = [];
-        //     }
-        //     acc[bookId].categories[transaction.category_id].push(transaction);
-        //   });
-        //   return acc;
-        // }, {});
-        // setGroupedTransactions(grouped);
+        // console.log("Transactions fetched")
 
       } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -464,7 +419,7 @@ const SMSParserApp: React.FC = () => {
       try {
         // Call the API to add the book to the backend
         const newBookFromBackend = await addBook(bookData);
-  
+        console.log(`newbook id is: ${newBookFromBackend._id}`)
         // Update the books state with the newly added book
         setBooks((prevBooks) => [
           ...prevBooks,
@@ -495,8 +450,8 @@ const SMSParserApp: React.FC = () => {
     console.log(`Book index : ${books[bookIndex]}`)
     // Retrieve the book_id from the selected book
     const selectedBook = books[bookIndex];
-    const book_id = selectedBook?.id ; // Assuming `id` is the field holding the book ID
-    
+    const book_id = selectedBook?._id ; // Assuming `id` is the field holding the book ID
+    console.log(`transaction is added to book with id : ${book_id}`)
     const user_id = await AsyncStorage.getItem('user_id');
             if (!user_id) {
               console.error('No user ID found in AsyncStorage');
@@ -511,7 +466,7 @@ const SMSParserApp: React.FC = () => {
       description: 'Payment transaction',// You may want to include the transaction name as a description
       user_id: user_id,  // Replace with the current user's ID
       category_id: category,  // Make sure the backend expects the category as category_id
-      books: [book_id],  // Pass the book_id as part of the books array
+      books: book_id,  // Pass the book_id as part of the books array
       associated_person: name, // If applicable, fill with associated person data
     };
   
@@ -593,7 +548,7 @@ const SMSParserApp: React.FC = () => {
   
   // Group transactions safely by category_id
 const groupByCategory = (transactions: Transaction[] | undefined) => {
-  console.log(`Entered grouping with : ${transactions}`)
+  // console.log(`Entered grouping with : ${transactions}`)
   if (!transactions) {
     console.log('returning as it is null')
     return {}; // Return an empty object if transactions is undefined or null
@@ -614,82 +569,92 @@ const groupByCategory = (transactions: Transaction[] | undefined) => {
 
 <Text style={styles.title}>Expense Books</Text>
 
-  <FlatList
-    horizontal
-    data={books}
-    keyExtractor={(item, index) => index.toString()}
-    renderItem={({ item: book, index: bookIndex }) => (
-    <View style={styles.book_container}>
-      {/* Book Title */}
-      <Text style={styles.bookTitle}>{book.name}</Text>
-      
-      {/* Categories and Transactions */}
-      <ScrollView style={styles.book}>
-        {/* Grouping fetchedTransactions by category_id */}
-        
-        {Object.entries(groupByCategory(fetchedTransactions)).map(([category_id, transactions]) => {
-          // Group transactions by associated person (if needed)
-          const groupedByName = groupByName(transactions);
-          console.log(`transactions fetched are : ${transactions}`);
-          
-          return (
-            <View key={category_id} style={styles.category}>
-              {/* Category Title */}
-              <Text style={styles.categoryTitle}>{category_id.toUpperCase()}</Text>
+<FlatList
+  horizontal
+  data={books}
+  keyExtractor={(item, index) => index.toString()}
+  renderItem={({ item: book, index: bookIndex }) => {
+    // Filter transactions that belong to the current book
+    const filteredTransactions = fetchedTransactions.filter(
+      (transaction) => transaction.book === book._id
+    );    
+    
+    console.log(`filtered transactions are: ${filteredTransactions}`)
+    console.log(`Book id checking is : ${book._id}`)
+    // Group filtered transactions by category
+    const groupedTransactions = groupByCategory(filteredTransactions);
 
-              {/* Transactions grouped by name */}
-              {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
-                // Generate a unique key for collapsing
-                const key = `${bookIndex}-${category_id}-${name}`;
-                const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
-                return (
-                  <View key={name} style={styles.nameSection}>
-                    {/* Name Title with toggle button */}
-                    <TouchableOpacity
-                      style={styles.nameToggle}
-                      onPress={() => toggleCollapsed(bookIndex, category_id, name)} // Toggling collapse state
-                    >
-                      <Text style={styles.nameTitle}>{name}</Text>
-                      <Text style={styles.toggleIcon}>
-                        {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
-                      </Text>
-                    </TouchableOpacity>
+    return (
+      <View style={styles.book_container}>
+        {/* Book Title */}
+        <Text style={styles.bookTitle}>{book.name}</Text>
 
-                    {/* Collapsible Transactions */}
-                    {!isCollapsed && (
-                      <View style={styles.transactionsList}>
-                        {groupedTransactions.map((transaction, index) => (
-                          <View key={transaction._id} style={styles.transaction}>
-                            <Text>Name: {transaction.associated_person}</Text>
-                            <Text>Amount: {transaction.amount}</Text>
-                            <Text>Date: {new Date(transaction.date).toLocaleDateString()}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })}
-      </ScrollView>
+        {/* Categories and Transactions */}
+        <ScrollView style={styles.book}>
+          {Object.entries(groupedTransactions).map(([category_id, transactions]) => {
+            // Group transactions by associated person
+            const groupedByName = groupByName(transactions);
 
-      {/* Add Transaction Button */}
-      <TouchableOpacity
-        style={styles.addTransactionButton}
-        onPress={() => {
-          setNewTransaction({
-            ...newTransaction,
-            bookIndex,
-          });
-          setIsTransactionModalVisible(true);
-        }}
-      >
-        <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
-      </TouchableOpacity>
-    </View>
-  )}
+            return (
+              <View key={category_id} style={styles.category}>
+                {/* Category Title */}
+                <Text style={styles.categoryTitle}>{category_id.toUpperCase()}</Text>
+
+                {/* Transactions grouped by name */}
+                {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
+                  // Generate a unique key for collapsing
+                  const key = `${bookIndex}-${category_id}-${name}`;
+                  const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
+
+                  return (
+                    <View key={name} style={styles.nameSection}>
+                      {/* Name Title with toggle button */}
+                      <TouchableOpacity
+                        style={styles.nameToggle}
+                        onPress={() => toggleCollapsed(bookIndex, category_id, name)} // Toggling collapse state
+                      >
+                        <Text style={styles.nameTitle}>{name}</Text>
+                        <Text style={styles.toggleIcon}>
+                          {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Collapsible Transactions */}
+                      {!isCollapsed && (
+                        <View style={styles.transactionsList}>
+                          {groupedTransactions.map((transaction, index) => (
+                            <View key={transaction._id} style={styles.transaction}>
+                              <Text>Name: {transaction.associated_person}</Text>
+                              <Text>Amount: {transaction.amount}</Text>
+                              <Text>Date: {new Date(transaction.date).toLocaleDateString()}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        {/* Add Transaction Button */}
+        <TouchableOpacity
+          style={styles.addTransactionButton}
+          onPress={() => {
+            setNewTransaction({
+              ...newTransaction,
+              bookIndex,
+            });
+            setIsTransactionModalVisible(true);
+          }}
+        >
+          <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }}
 />
 
 
@@ -1270,5 +1235,89 @@ export default SMSParserApp;
 //   )}
 // />
 
+
+
+///New flatlist
+
+// <FlatList
+// horizontal
+// data={books}
+// keyExtractor={(item, index) => index.toString()}
+// renderItem={({ item: book, index: bookIndex }) => (
+  
+
+// <View style={styles.book_container}>
+//   {/* Book Title */}
+//   <Text style={styles.bookTitle}>{book.name}</Text>
+  
+//   {/* Categories and Transactions */}
+//   <ScrollView style={styles.book}>
+//     {/* Grouping fetchedTransactions by category_id */}
+    
+    
+//     {Object.entries(groupByCategory(fetchedTransactions)).map(([category_id, transactions]) => {
+//       // Group transactions by associated person (if needed)
+//       const groupedByName = groupByName(transactions);
+//       // console.log(`transactions fetched are : ${transactions}`);
+//       console.log(`current book id is ${book._id}`)
+//       return (
+//         <View key={category_id} style={styles.category}>
+//           {/* Category Title */}
+//           <Text style={styles.categoryTitle}>{category_id.toUpperCase()}</Text>
+
+//           {/* Transactions grouped by name */}
+//           {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
+//             // Generate a unique key for collapsing
+//             const key = `${bookIndex}-${category_id}-${name}`;
+//             const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
+//             return (
+//               <View key={name} style={styles.nameSection}>
+//                 {/* Name Title with toggle button */}
+//                 <TouchableOpacity
+//                   style={styles.nameToggle}
+//                   onPress={() => toggleCollapsed(bookIndex, category_id, name)} // Toggling collapse state
+//                 >
+//                   <Text style={styles.nameTitle}>{name}</Text>
+//                   <Text style={styles.toggleIcon}>
+//                     {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
+//                   </Text>
+//                 </TouchableOpacity>
+
+//                 {/* Collapsible Transactions */}
+//                 {!isCollapsed && (
+//                   <View style={styles.transactionsList}>
+//                     {groupedTransactions.map((transaction, index) => (
+//                       <View key={transaction._id} style={styles.transaction}>
+//                         <Text>Name: {transaction.associated_person}</Text>
+//                         <Text>Amount: {transaction.amount}</Text>
+//                         <Text>Date: {new Date(transaction.date).toLocaleDateString()}</Text>
+//                       </View>
+//                     ))}
+//                   </View>
+//                 )}
+//               </View>
+//             );
+//           })}
+//         </View>
+//       );
+//     })}
+//   </ScrollView>
+
+//   {/* Add Transaction Button */}
+//   <TouchableOpacity
+//     style={styles.addTransactionButton}
+//     onPress={() => {
+//       setNewTransaction({
+//         ...newTransaction,
+//         bookIndex,
+//       });
+//       setIsTransactionModalVisible(true);
+//     }}
+//   >
+//     <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+//   </TouchableOpacity>
+// </View>
+// )}
+// />
 
 
