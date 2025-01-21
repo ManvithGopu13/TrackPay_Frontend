@@ -34,24 +34,24 @@ type Transaction = {
   // };
 };
 
-type GroupedTransactions = {
-  [bookId: string]: {
-    bookName: string;
-    categories: {
-      [categoryId: string]: Transaction[];
-    };
-  };
-};
+// type GroupedTransactions = {
+//   [bookId: string]: {
+//     bookName: string;
+//     categories: {
+//       [categoryId: string]: Transaction[];
+//     };
+//   };
+// };
 
-type GroupedBooks = {
-  [bookId: string]: {
-    book_id: string;
-    bookName: string;
-    categories: {
-      [categoryId: string]: Transaction[];
-    };
-  };
-};
+// type GroupedBooks = {
+//   [bookId: string]: {
+//     book_id: string;
+//     bookName: string;
+//     categories: {
+//       [categoryId: string]: Transaction[];
+//     };
+//   };
+// };
 
 interface Book {
   _id: string;  // or _id: string if it's from MongoDB
@@ -61,11 +61,11 @@ interface Book {
   };
 }
 
-interface Payment {
-  name: string;
-  amount: string;
-  date: string;
-}
+// interface Payment {
+//   name: string;
+//   amount: string;
+//   date: string;
+// }
 
 interface SMSMessage {
   _id: string;
@@ -198,11 +198,11 @@ const SMSParserApp: React.FC = () => {
               console.error('No user ID found in AsyncStorage');
               return;
             }
-
+            
             // Fetch existing books from the backend
             const existingBooks = await getBooks(user_id); // Implement this API call
             // console.log('Response:', existingBooks);
-
+            
             // Find the "All Payments Book" from the existingBooks array
             const allPaymentsBook = existingBooks.find((book: Book) => book.name === 'All Payments Book');
             // console.log(`Found book: ${allPaymentsBook ? JSON.stringify(allPaymentsBook) : 'Not found'}`);
@@ -216,32 +216,43 @@ const SMSParserApp: React.FC = () => {
               });
               book_id = newBook._id;
               console.log(`new added book id is : ${book_id}`)
-              console.log('Book added to backend:', newBook);
+              // console.log('Book added to backend:', newBook);
+              setBooks((prevBooks) => [...prevBooks,{ ...newBook, categories: {} },])
+
+              // Refresh transactions after adding the book
+              // const updatedTransactions = await getTransactions(user_id);
+              // setTransactions(updatedTransactions);
             } else {
               // Use the existing book's ID
               book_id = allPaymentsBook._id;
               // console.log('Using existing book:', allPaymentsBook);
             }
-
+            console.log(`Before getTransactions`)
             // Fetch existing transactions for the user
-             const existingTransactions = await getTransactions(user_id); // Fetch all transactions for the user
-            // console.log('Existing transactions:', existingTransactions);
-
+            const existingTransactions = await getTransactions(user_id); // Fetch all transactions for the user
+            
+            console.log('Existing transactions:', existingTransactions);
+            console.log(`After getTransactions`)
             // Process SMS messages and add transactions
+            if(!messages){
+              console.log(`No messages`)
+              return
+            }
             for (const message of messages) {
-              
+              console.log(`Entered for Loop`)
               const paymentDetails = parsePaymentMessage(message.body);
+              console.log(`Parsed payment Message`)
               if (paymentDetails.amount) {
                 try {
                   // Normalize the message body for comparison (e.g., remove extra spaces)
                   const normalizedMessage = message.body.trim().toLowerCase();
-                  // console.log(`paymentDetails refno : ${paymentDetails.refNo}`)
+                  console.log(`paymentDetails refno : ${paymentDetails.refNo}`)
                   // Check if the transaction already exists (by refNo or message body)
                   const isDuplicate = existingTransactions.some(
                     (txn: Transaction) =>
                       txn.refNo === paymentDetails.refNo
                   );
-                  // console.log(`Is it duplicate : ${isDuplicate}`)
+                  console.log(`Is it duplicate : ${isDuplicate}`)
                   if (!isDuplicate) {
                     // Add transaction to the backend
                     const transactionData = {
@@ -257,6 +268,8 @@ const SMSParserApp: React.FC = () => {
                     };
 
                     const transactionResponse = await addTransaction(transactionData);
+                    // setTransactions((prevTransactions) => [...prevTransactions])
+                    setTransactions((prevTransactions) => [...prevTransactions, transactionResponse]);
                     console.log('Transaction added to backend:', transactionResponse);
                   } else {
                     // console.log('Duplicate transaction detected, skipping:', message.body);
@@ -267,6 +280,8 @@ const SMSParserApp: React.FC = () => {
                 }
               }
             }
+            // const addedTransactionsatFirst = await getTransactions(user_id); 
+            // setTransactions((prevTransactions) => [...prevTransactions, addedTransactionsatFirst])
           }
         );
       } else {
@@ -278,7 +293,8 @@ const SMSParserApp: React.FC = () => {
   };
 
   fetchSMSAndInitialize();
-}, []);
+}, [books]);
+
 
 
   useEffect(() => {
@@ -336,6 +352,7 @@ const SMSParserApp: React.FC = () => {
 
     fetchTransactions();
   }, []);
+
 
   if (loading) {
     return <Text>Loading...</Text>;
@@ -441,7 +458,7 @@ const SMSParserApp: React.FC = () => {
 
   const addTransactiontoBack = async () => {
     const { name, amount, category, bookIndex } = newTransaction;
-  
+    console.log(`${bookIndex}`)
     // Validate the required fields
     if (!name.trim() || !amount.trim() || !category.trim()) {
       Alert.alert("Error", "All fields are required.");
@@ -466,7 +483,7 @@ const SMSParserApp: React.FC = () => {
       description: 'Payment transaction',// You may want to include the transaction name as a description
       user_id: user_id,  // Replace with the current user's ID
       category_id: category,  // Make sure the backend expects the category as category_id
-      books: book_id,  // Pass the book_id as part of the books array
+      book: book_id,  // Pass the book_id as part of the books array
       associated_person: name, // If applicable, fill with associated person data
     };
   
@@ -492,7 +509,7 @@ const SMSParserApp: React.FC = () => {
       // Clear the new transaction state and hide modal
       setNewTransaction({ name: "", amount: "", category: "", bookIndex: 0 });
       setIsTransactionModalVisible(false);
-  
+      setTransactions((prevTransactions) => [...prevTransactions, newTransactionFromBackend]);
     } catch (error) {
       console.error("Error adding transaction to the backend:", error);
       Alert.alert("Error", "There was a problem adding the transaction. Please try again.");
@@ -518,35 +535,7 @@ const SMSParserApp: React.FC = () => {
     setCollapsed(collapsed? false : true);
   };
 
-  // const renderTransactionItem = ({ item }: { item: Transaction }) => (
-  //   <View style={styles.transactionItem}>
-  //     <Text>{item.description}</Text>
-  //     <Text>{item.amount}</Text>
-  //     <Text>{item.associated_person}</Text>
-  //   </View>
-  // );
 
-  // const renderCategory = (bookId: string, categoryId: string, transactions: Transaction[]) => (
-  //   <View key={`${bookId}-${categoryId}`}>
-  //     <Text style={styles.categoryHeader}>{categoryId}</Text>
-  //     <FlatList
-  //       data={transactions}
-  //       renderItem={renderTransactionItem}
-  //       keyExtractor={(item) => item._id}
-  //     />
-  //   </View>
-  // );
-
-  // const renderBook = (bookId: string, book: { bookName: string; categories: { [categoryId: string]: Transaction[] } }) => (
-  //   <View key={bookId} style={styles.bookContainer}>
-  //     <Text style={styles.bookTitle}>{book.bookName}</Text>
-  //     {Object.entries(book.categories).map(([categoryId, transactions]) =>
-  //       renderCategory(bookId, categoryId, transactions)
-  //     )}
-  //   </View>
-  // );
-  
-  // Group transactions safely by category_id
 const groupByCategory = (transactions: Transaction[] | undefined) => {
   // console.log(`Entered grouping with : ${transactions}`)
   if (!transactions) {
@@ -562,6 +551,7 @@ const groupByCategory = (transactions: Transaction[] | undefined) => {
     return acc;
   }, {} as { [category_id: string]: Transaction[] });
 };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -893,431 +883,5 @@ const styles = StyleSheet.create({
 
 export default SMSParserApp;
 
-// src/SMSParserApp.tsx
-// import React, { useState, useEffect } from "react";
-// import {
-//   View,
-//   Text,
-//   FlatList,
-//   StyleSheet,
-//   PermissionsAndroid,
-//   Alert,
-//   TouchableOpacity,
-//   TextInput,
-//   Modal,
-//   SafeAreaView,
-//   ScrollView,
-// } from "react-native";
-// import SmsAndroid from "react-native-get-sms-android";
-// import { addBook, addTransaction, getBooks } from "../api/lendingApi"; // Import API functions
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// interface Transaction {
-//   name: string;
-//   amount: string;
-//   date: string;
-// }
-
-// interface Book {
-//   name: string;
-//   categories: {
-//     [category: string]: Transaction[];
-//   };
-// }
-
-// interface SMSMessage {
-//   _id: string;
-//   address: string;
-//   body: string;
-//   date: number;
-// }
-
-// interface CategorizedMessages {
-//   [category: string]: SMSMessage[];
-// }
-
-// // Categories for SMS messages
-// const categories: { [key: string]: string[] } = {
-//   groceries: ["supermarket", "grocery", "store"],
-//   food: ["restaurant", "cafe", "food", "dining"],
-//   travel: ["flight", "train", "uber", "taxi", "travel"],
-//   lifestyle: ["shopping", "mall", "fashion", "clothing"],
-//   payments: ["debited", "credited", "transaction", "payment", "withdrawal"],
-//   others: [],
-// };
-
-// // Categorize SMS function
-// const categorizeSMS = (smsBody: string): string => {
-//   for (const category in categories) {
-//     for (const keyword of categories[category]) {
-//       if (smsBody.toLowerCase().includes(keyword)) {
-//         return category;
-//       }
-//     }
-//   }
-//   return "others";
-// };
-
-// // Parse payment SMS for details
-// const parsePaymentMessage = (smsBody: string) => {
-//   const parsedMessage: {
-//     to?: string;
-//     from?: string;
-//     amount?: string;
-//     refNo?: string;
-//     type?: "debit" | "credit";
-//   } = {};
-
-//   if (smsBody.toLowerCase().includes("debited")) {
-//     parsedMessage.type = "debit";
-//     const amountMatch = smsBody.match(/debited by\s+([0-9.]+)/i);
-//     if (amountMatch) parsedMessage.amount = amountMatch[1];
-
-//     const toMatch = smsBody.match(/to\s+([A-Za-z\s]+)/i);
-//     if (toMatch) parsedMessage.to = toMatch[1].trim();
-//   } else if (smsBody.toLowerCase().includes("credited")) {
-//     parsedMessage.type = "credit";
-//     const amountMatch = smsBody.match(/credited by\s+([0-9.]+)/i);
-//     if (amountMatch) parsedMessage.amount = amountMatch[1];
-
-//     const fromMatch = smsBody.match(/from\s+([A-Za-z\s]+)/i);
-//     if (fromMatch) parsedMessage.from = fromMatch[1].trim();
-//   }
-
-//   return parsedMessage;
-// };
-
-// const SMSParserApp: React.FC = () => {
-//   const [books, setBooks] = useState<Book[]>([]);
-//   const [newBookName, setNewBookName] = useState("");
-//   const [isModalVisible, setIsModalVisible] = useState(false);
-
-//   useEffect(() => {
-//     // Fetch existing books from backend
-//     const fetchBooks = async () => {
-//       try {
-//         const id = await AsyncStorage.getItem('user_id');
-//         if (!id) {
-//           console.error("No user ID found in AsyncStorage");
-//           return; // Handle this case appropriately
-//         }
-//         const fetchedBooks = await getBooks(id);
-//         setBooks(fetchedBooks);
-//       } catch (error) {
-//         console.error("Error fetching books:", error);
-//       }
-//     };
-
-//     fetchBooks();
-//     fetchSMS(); // Fetch SMS on component mount
-//   }, []);
-
-//   const fetchSMS = async () => {
-//     try {
-//       const granted = await PermissionsAndroid.request(
-//         PermissionsAndroid.PERMISSIONS.READ_SMS,
-//         {
-//           title: "SMS Permission",
-//           message: "This app requires access to your SMS messages to track payments.",
-//           buttonNeutral: "Ask Me Later",
-//           buttonNegative: "Cancel",
-//           buttonPositive: "OK",
-//         }
-//       );
-
-//       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-//         const filter = { box: "inbox", indexFrom: 0, maxCount: 100 };
-//         SmsAndroid.list(
-//           JSON.stringify(filter),
-//           (fail: string) => {
-//             console.error("Failed to fetch SMS: ", fail);
-//             Alert.alert("Error", "Failed to fetch SMS messages.");
-//           },
-//           async (count: number, smsList: string) => {
-//             const messages: SMSMessage[] = JSON.parse(smsList);
-//             const newBook: Book = {
-//               name: "All Payments",
-//               categories: { payments: [] },
-//             };
-
-//             messages.forEach((message) => {
-//               const paymentDetails = parsePaymentMessage(message.body);
-//               if (paymentDetails.amount) {
-//                 newBook.categories.payments.push({
-//                   name: paymentDetails.to || paymentDetails.from || "Unknown",
-//                   amount: paymentDetails.amount,
-//                   date: new Date(message.date).toLocaleString(),
-//                 });
-//               }
-//             });
-
-//             const id = await AsyncStorage.getItem('user_id');
-//         if (!id) {
-//           console.error("No user ID found in AsyncStorage");
-//           return; // Handle this case appropriately
-//         }
-//             // Save the book to backend
-//             const response = await addBook({
-//               user_id: id, // Replace with actual user ID
-//               bookData: newBook,
-//             });
-//             setBooks([...books, response]); // Add the new book to state
-//           }
-//         );
-//       } else {
-//         Alert.alert("Permission Denied", "SMS permission is required to use this feature.");
-//       }
-//     } catch (error) {
-//       console.error("Error fetching SMS: ", error);
-//     }
-//   };
-
-//   const handleAddBook = async () => {
-//     if (!newBookName.trim()) {
-//       Alert.alert("Error", "Book name cannot be empty.");
-//       return;
-//     }
-
-//     const newBook: Book = { name: newBookName, categories: {} };
-//     const id = await AsyncStorage.getItem('user_id');
-//         if (!id) {
-//           console.error("No user ID found in AsyncStorage");
-//           return; // Handle this case appropriately
-//         }
-//     try {
-//       const response = await addBook({ user_id: id, bookData: newBook });
-//       setBooks([...books, response]);
-//       setNewBookName("");
-//       setIsModalVisible(false);
-//     } catch (error) {
-//       console.error("Error adding book:", error);
-//     }
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <Text style={styles.title}>SMS Parser & Expense Tracker</Text>
-//       <FlatList
-//         data={books}
-//         keyExtractor={(item, index) => index.toString()}
-//         renderItem={({ item }) => (
-//           <View style={styles.bookContainer}>
-//             <Text style={styles.bookTitle}>{item.name}</Text>
-//             {Object.entries(item.categories).map(([category, transactions]) => (
-//               <View key={category}>
-//                 <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
-//                 {transactions.map((transaction, idx) => (
-//                   <Text key={idx} style={styles.transaction}>
-//                     {transaction.name} - ₹{transaction.amount} - {transaction.date}
-//                   </Text>
-//                 ))}
-//               </View>
-//             ))}
-//           </View>
-//         )}
-//       />
-//       <TouchableOpacity
-//         style={styles.addBookButton}
-//         onPress={() => setIsModalVisible(true)}
-//       >
-//         <Text style={styles.addBookText}>Add Book</Text>
-//       </TouchableOpacity>
-//       <Modal visible={isModalVisible} transparent>
-//         <View style={styles.modalContainer}>
-//           <TextInput
-//             style={styles.input}
-//             placeholder="Enter book name"
-//             value={newBookName}
-//             onChangeText={setNewBookName}
-//           />
-//           <TouchableOpacity style={styles.saveButton} onPress={handleAddBook}>
-//             <Text style={styles.saveText}>Save</Text>
-//           </TouchableOpacity>
-//         </View>
-//       </Modal>
-//     </SafeAreaView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, padding: 16 },
-//   title: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
-//   bookContainer: { marginBottom: 16 },
-//   bookTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 8 },
-//   categoryTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4 },
-//   transaction: { fontSize: 14, marginBottom: 2 },
-//   addBookButton: { backgroundColor: "#007bff", padding: 10, borderRadius: 5, alignItems: "center" },
-//   addBookText: { color: "#fff", fontSize: 16 },
-//   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.5)" },
-//   input: { backgroundColor: "#fff", padding: 10, width: "80%", borderRadius: 5, marginBottom: 16 },
-//   saveButton: { backgroundColor: "#28a745", padding: 10, borderRadius: 5 },
-//   saveText: { color: "#fff", fontSize: 16 },
-// });
-
-// export default SMSParserApp;
-
-
-
-
-// <FlatList
-//   horizontal
-//   data={books}
-//   keyExtractor={(item, index) => index.toString()}
-//   renderItem={({ item: book, index: bookIndex }) => (
-//     <View style={styles.book_container}>
-//       {/* Book Title */}
-//       <Text style={styles.bookTitle}>{book.name}</Text>
-
-//       {/* Categories and Transactions */}
-//       <ScrollView style={styles.book}>
-//         {Object.entries(book.categories).map(([category, transactions]) => {
-//           // Group transactions by name
-//           const groupedByName = groupByName(transactions);
-
-//           return (
-//             <View key={category} style={styles.category}>
-//               {/* Category Title */}
-//               <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
-
-//               {/* Transactions grouped by name */}
-//               {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
-//                 // Generate a unique key for collapsing
-//                 const key = `${bookIndex}-${category}-${name}`;
-//                 const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
-//                 // console.log('Initial collapsedState:', collapsedState);
-//                 return (
-//                   <View key={name} style={styles.nameSection}>
-//                     {/* Name Title with toggle button */}
-//                     <TouchableOpacity
-//                       style={styles.nameToggle}
-//                       onPress={() => toggleCollapsed(bookIndex, category, name)} // Toggling collapse state
-//                     >
-//                       <Text style={styles.nameTitle}>{name}</Text>
-//                       <Text style={styles.toggleIcon}>
-//                         {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
-//                       </Text>
-//                     </TouchableOpacity>
-
-//                     {/* Collapsible Transactions */}
-//                     {!isCollapsed && (
-//                       <View style={styles.transactionsList}>
-//                         {groupedTransactions.map((transaction, index) => (
-//                           <View key={index} style={styles.transaction}>
-//                             <Text>Name: {transaction.associated_person}</Text>
-//                             <Text>Amount: {transaction.amount}</Text>
-//                             <Text>Date: {transaction.date}</Text>
-//                           </View>
-//                         ))}
-//                       </View>
-//                     )}
-//                   </View>
-//                 );
-//               })}
-//             </View>
-//           );
-//         })}
-//       </ScrollView>
-
-//       {/* Add Transaction Button */}
-//       <TouchableOpacity
-//         style={styles.addTransactionButton}
-//         onPress={() => {
-//           setNewTransaction({
-//             ...newTransaction,
-//             bookIndex,
-//           });
-//           setIsTransactionModalVisible(true);
-//         }}
-//       >
-//         <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
-//       </TouchableOpacity>
-//     </View>
-//   )}
-// />
-
-
-
-///New flatlist
-
-// <FlatList
-// horizontal
-// data={books}
-// keyExtractor={(item, index) => index.toString()}
-// renderItem={({ item: book, index: bookIndex }) => (
-  
-
-// <View style={styles.book_container}>
-//   {/* Book Title */}
-//   <Text style={styles.bookTitle}>{book.name}</Text>
-  
-//   {/* Categories and Transactions */}
-//   <ScrollView style={styles.book}>
-//     {/* Grouping fetchedTransactions by category_id */}
-    
-    
-//     {Object.entries(groupByCategory(fetchedTransactions)).map(([category_id, transactions]) => {
-//       // Group transactions by associated person (if needed)
-//       const groupedByName = groupByName(transactions);
-//       // console.log(`transactions fetched are : ${transactions}`);
-//       console.log(`current book id is ${book._id}`)
-//       return (
-//         <View key={category_id} style={styles.category}>
-//           {/* Category Title */}
-//           <Text style={styles.categoryTitle}>{category_id.toUpperCase()}</Text>
-
-//           {/* Transactions grouped by name */}
-//           {Object.entries(groupedByName).map(([name, groupedTransactions]) => {
-//             // Generate a unique key for collapsing
-//             const key = `${bookIndex}-${category_id}-${name}`;
-//             const isCollapsed = collapsedState[key]; // Use the initialized collapsed state
-//             return (
-//               <View key={name} style={styles.nameSection}>
-//                 {/* Name Title with toggle button */}
-//                 <TouchableOpacity
-//                   style={styles.nameToggle}
-//                   onPress={() => toggleCollapsed(bookIndex, category_id, name)} // Toggling collapse state
-//                 >
-//                   <Text style={styles.nameTitle}>{name}</Text>
-//                   <Text style={styles.toggleIcon}>
-//                     {isCollapsed ? "▼" : "▲"} {/* Collapsed state indicator */}
-//                   </Text>
-//                 </TouchableOpacity>
-
-//                 {/* Collapsible Transactions */}
-//                 {!isCollapsed && (
-//                   <View style={styles.transactionsList}>
-//                     {groupedTransactions.map((transaction, index) => (
-//                       <View key={transaction._id} style={styles.transaction}>
-//                         <Text>Name: {transaction.associated_person}</Text>
-//                         <Text>Amount: {transaction.amount}</Text>
-//                         <Text>Date: {new Date(transaction.date).toLocaleDateString()}</Text>
-//                       </View>
-//                     ))}
-//                   </View>
-//                 )}
-//               </View>
-//             );
-//           })}
-//         </View>
-//       );
-//     })}
-//   </ScrollView>
-
-//   {/* Add Transaction Button */}
-//   <TouchableOpacity
-//     style={styles.addTransactionButton}
-//     onPress={() => {
-//       setNewTransaction({
-//         ...newTransaction,
-//         bookIndex,
-//       });
-//       setIsTransactionModalVisible(true);
-//     }}
-//   >
-//     <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
-//   </TouchableOpacity>
-// </View>
-// )}
-// />
 
 
