@@ -17,7 +17,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 // Bottom Tab Navigator
-const MainTabs = () => (
+const MainTabs = ({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       tabBarIcon: ({ color, size }) => {
@@ -57,7 +57,10 @@ const MainTabs = () => (
   >
     <Tab.Screen name="Home" component={SMSParserApp} />
     <Tab.Screen name="Lends" component={LendingScreen} />
-    <Tab.Screen name="Profile" component={ProfileScreen} />
+    <Tab.Screen name="Profile" >
+    {(props) => (
+        <ProfileScreen {...props} setIsAuthenticated={setIsAuthenticated} />
+      )}</Tab.Screen> 
   </Tab.Navigator>
 );
 
@@ -106,7 +109,10 @@ export default function App() {
         </>
         ) : (
           <>
-          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+          {/* <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /> */}
+          <Stack.Screen name="Main">
+          {(props) => <MainTabs {...props} setIsAuthenticated={setIsAuthenticated} />}
+        </Stack.Screen>
           </>
         )}
       </Stack.Navigator>
