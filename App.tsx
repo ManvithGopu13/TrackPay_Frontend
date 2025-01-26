@@ -110,7 +110,7 @@ export default function App() {
         ) : (
           <>
           {/* <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} /> */}
-          <Stack.Screen name="Main">
+          <Stack.Screen name="Main" options={{ headerShown: false }}>
           {(props) => <MainTabs {...props} setIsAuthenticated={setIsAuthenticated} />}
         </Stack.Screen>
           </>
