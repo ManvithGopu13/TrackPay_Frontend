@@ -34,24 +34,6 @@ type Transaction = {
   // };
 };
 
-// type GroupedTransactions = {
-//   [bookId: string]: {
-//     bookName: string;
-//     categories: {
-//       [categoryId: string]: Transaction[];
-//     };
-//   };
-// };
-
-// type GroupedBooks = {
-//   [bookId: string]: {
-//     book_id: string;
-//     bookName: string;
-//     categories: {
-//       [categoryId: string]: Transaction[];
-//     };
-//   };
-// };
 
 interface Book {
   _id: string;  // or _id: string if it's from MongoDB
@@ -61,11 +43,6 @@ interface Book {
   };
 }
 
-// interface Payment {
-//   name: string;
-//   amount: string;
-//   date: string;
-// }
 
 interface SMSMessage {
   _id: string;
@@ -137,6 +114,7 @@ const SMSParserApp: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [newBookName, setNewBookName] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [count, setCount] = useState(false);
   const [isTransactionModalVisible, setIsTransactionModalVisible] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
     name: "",
@@ -161,9 +139,63 @@ const SMSParserApp: React.FC = () => {
   // console.log(`Final Fetched transactions are: ${fetchedTransactions}`)
  // State to manage collapsed/expanded names
 
+     // Helper function to parse payment-related SMS
+     const parsePaymentMessage = (smsBody: string) => {
+      const parsedMessage: {
+        to?: string;
+        from?: string;
+        amount?: string;
+        refNo?: string;
+        type?: 'debit' | 'credit';
+      } = {};
+    
+      if (smsBody.toLowerCase().includes('debited by')) {
+        parsedMessage.type = 'debit';
+    
+        // Extract the amount
+        const amountMatch = smsBody.match(/debited by\s+([0-9.]+)/i);
+        if (amountMatch) {
+          parsedMessage.amount = amountMatch[1];
+        }
+    
+        // Extract "TO"
+        const toMatch = smsBody.match(/trf to\s+([A-Z\s]+?)(?=\s+Refno|\s*$)/i);
+        if (toMatch) {
+          parsedMessage.to = toMatch[1].trim();
+          // .split(' ').pop()
+        }
+      } else if (smsBody.toLowerCase().includes('credited by')) {
+        parsedMessage.type = 'credit';
+    
+        // Extract the amount
+        const amountMatch = smsBody.match(/credited by\s+([0-9.]+)/i);
+        if (amountMatch) {
+          parsedMessage.amount = amountMatch[1];
+        }
+    
+        // Extract "FROM"
+        const fromMatch = smsBody.match(/from\s+([\w\s]+)/i);
+        if (fromMatch) {
+          parsedMessage.from = fromMatch[1].trim();
+        }
+      }
+    
+      // Extract reference number (Refno)
+      const refMatch = smsBody.match(/refno[:\s]+(\w+)/i);
+      if (refMatch) {
+        parsedMessage.refNo = refMatch[1];
+      }
+    
+      return parsedMessage;
+    };
+
 
  useEffect(() => {
   const fetchSMSAndInitialize = async () => {
+    if (!count){
+      setCount(true)
+      fetchSMSAndInitialize
+    }
     try {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_SMS,
@@ -191,7 +223,7 @@ const SMSParserApp: React.FC = () => {
           },
           async (count: number, smsList: string) => {
             const messages: SMSMessage[] = JSON.parse(smsList);
-
+            setSmsMessages(messages)
             // Get user ID
             const user_id = await AsyncStorage.getItem('user_id');
             if (!user_id) {
@@ -271,6 +303,8 @@ const SMSParserApp: React.FC = () => {
                     // setTransactions((prevTransactions) => [...prevTransactions])
                     setTransactions((prevTransactions) => [...prevTransactions, transactionResponse]);
                     console.log('Transaction added to backend:', transactionResponse);
+                  }else if (isDuplicate === true) {
+                    return
                   } else {
                     // console.log('Duplicate transaction detected, skipping:', message.body);
                   }
@@ -293,7 +327,7 @@ const SMSParserApp: React.FC = () => {
   };
 
   fetchSMSAndInitialize();
-}, [books]);
+}, []);
 
 
 
@@ -367,56 +401,6 @@ const SMSParserApp: React.FC = () => {
   //   // console.log("Updated collapsedState:", updatedCollapsedState);
   // }, [books]);
 
-
-    // Helper function to parse payment-related SMS
-    const parsePaymentMessage = (smsBody: string) => {
-    const parsedMessage: {
-      to?: string;
-      from?: string;
-      amount?: string;
-      refNo?: string;
-      type?: 'debit' | 'credit';
-    } = {};
-  
-    if (smsBody.toLowerCase().includes('debited by')) {
-      parsedMessage.type = 'debit';
-  
-      // Extract the amount
-      const amountMatch = smsBody.match(/debited by\s+([0-9.]+)/i);
-      if (amountMatch) {
-        parsedMessage.amount = amountMatch[1];
-      }
-  
-      // Extract "TO"
-      const toMatch = smsBody.match(/trf to\s+([A-Z\s]+?)(?=\s+Refno|\s*$)/i);
-      if (toMatch) {
-        parsedMessage.to = toMatch[1].trim();
-        // .split(' ').pop()
-      }
-    } else if (smsBody.toLowerCase().includes('credited by')) {
-      parsedMessage.type = 'credit';
-  
-      // Extract the amount
-      const amountMatch = smsBody.match(/credited by\s+([0-9.]+)/i);
-      if (amountMatch) {
-        parsedMessage.amount = amountMatch[1];
-      }
-  
-      // Extract "FROM"
-      const fromMatch = smsBody.match(/from\s+([\w\s]+)/i);
-      if (fromMatch) {
-        parsedMessage.from = fromMatch[1].trim();
-      }
-    }
-  
-    // Extract reference number (Refno)
-    const refMatch = smsBody.match(/refno[:\s]+(\w+)/i);
-    if (refMatch) {
-      parsedMessage.refNo = refMatch[1];
-    }
-  
-    return parsedMessage;
-  };
 
 
 
